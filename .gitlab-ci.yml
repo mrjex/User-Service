@@ -16,8 +16,8 @@ compile:
   tags:
     - docker
   script:
-    - mkdir -p mybinaries
-    - go build -o mybinaries ./main.go
+    - mkdir -p binaries
+    - go build -o binaries ./...
   artifacts:
     paths:
-      - mybinaries
+      - binaries
