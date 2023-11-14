@@ -6,7 +6,6 @@
 # https://docs.gitlab.com/ee/development/cicd/templates.html
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Go.gitlab-ci.yml
-
 image: golang:latest
 
 stages:
@@ -14,6 +13,8 @@ stages:
 
 compile:
   stage: build
+  tags:
+    - docker
   script:
     - mkdir -p mybinaries
     - go build -o mybinaries ./...
