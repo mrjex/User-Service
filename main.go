@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/joho/godotenv"
@@ -29,9 +31,56 @@ func main() {
 		which can subscribe and publish to different topics and handle events
 	*/
 	mqttClient := getInstance()
-	mqttClient.Subscribe("/login", byte(0), func(c mqtt.Client, m mqtt.Message) {
-		// Potentially parse a JSON payload in the form { username: string, password: string }
-		fmt.Printf("Recieved message %s\n", string(m.Payload()[:]))
+
+	// CREATE
+	mqttClient.Subscribe("/dentists/create", byte(0), func(c mqtt.Client, m mqtt.Message) {
+
+		var payload User
+		err := json.Unmarshal(m.Payload(), &payload)
+		if err != nil {
+			panic(err)
+		}
+		create(payload.Username, payload.Password)
+		fmt.Printf("%+v\n", payload)
+
+	})
+
+	// READ
+	mqttClient.Subscribe("/dentists/read/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+
+		topic := strings.Split(m.Topic(), "/")
+		username := topic[len(topic)-1]
+		user := read(username)
+		fmt.Printf("%+v\n", user)
+
+	})
+
+	// UPDATE
+	mqttClient.Subscribe("/dentists/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+
+		var payload User
+		topic := strings.Split(m.Topic(), "/")
+		username := topic[len(topic)-1]
+
+		err := json.Unmarshal(m.Payload(), &payload)
+		if err != nil {
+			panic(err)
+		}
+
+		update(username, payload)
+		fmt.Printf("%+v\n", payload)
+
+	})
+
+	//DELETE
+	mqttClient.Subscribe("/dentists/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+
+		topic := strings.Split(m.Topic(), "/")
+		username := topic[len(topic)-1]
+
+		delete(username)
+		fmt.Printf("Deleted Dentist: ", username)
+
 	})
 
 	// Variant #2 REST
@@ -40,21 +89,21 @@ func main() {
 		it then queries the database and proceeds to hash the given password to the one present in the database
 		finally it responds with the status of the operation
 	*/
-	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		username := r.Header.Get("username")
-		password := r.Header.Get("password")
-		status := login(username, password)
-		fmt.Fprint(w, status)
-	})
+	// http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	// 	username := r.Header.Get("username")
+	// 	password := r.Header.Get("password")
+	// 	status := login(username, password)
+	// 	fmt.Fprint(w, status)
+	// })
 
-	http.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {
+	// http.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {
 
-		username := r.Header.Get("username")
-		password := r.Header.Get("password")
-		status := signup(username, password)
-		fmt.Fprint(w, status)
+	// 	username := r.Header.Get("username")
+	// 	password := r.Header.Get("password")
+	// 	status := signup(username, password)
+	// 	fmt.Fprint(w, status)
 
-	})
+	// })
 
 	fmt.Println("HTTP server is listening for requests...")
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
