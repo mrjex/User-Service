@@ -5,17 +5,23 @@ import (
 	"fmt"
 	"log"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type Dentist struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	Username string             `bson:"username,omitempty"`
+	Password string             `bson:"password,omitempty"`
+}
 
 // CREATE
 func create(username string, password string) bool {
 
-	col := getUserCollection()
-
+	col := getDentistCollection()
 	// Hash the password using Bcrypt
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	doc := User{Username: username, Password: string(hashed)}
+	doc := Dentist{Username: username, Password: string(hashed)}
 
 	if userExists(username) {
 		return false
@@ -32,28 +38,27 @@ func create(username string, password string) bool {
 }
 
 // READ
-func read(username string) User {
-	col := getUserCollection()
-	data := col.FindOne(context.TODO(), User{Username: username})
-	user := User{}
+func read(username string) Dentist {
+	col := getDentistCollection()
+	data := col.FindOne(context.TODO(), Dentist{Username: username})
+	user := Dentist{}
 	data.Decode(user)
 	return user
 }
 
 // UPDATE
-func update(username string, payload User) bool {
+func update(username string, payload Dentist) bool {
 
-	col := getUserCollection()
-
+	col := getDentistCollection()
 	// Hash the password using Bcrypt
 	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 14)
-	doc := User{Username: payload.Username, Password: string(hashed)}
+	doc := Dentist{Username: payload.Username, Password: string(hashed)}
 
 	if userExists(payload.Username) {
 		return false
 	}
 
-	result, err := col.UpdateOne(context.TODO(), User{Username: payload.Username}, doc)
+	result, err := col.UpdateOne(context.TODO(), Dentist{Username: payload.Username}, doc)
 	_ = result
 
 	if err != nil {
@@ -68,9 +73,8 @@ func update(username string, payload User) bool {
 // DELETE
 func delete(username string) bool {
 
-	col := getUserCollection()
-
-	result, err := col.DeleteOne(context.TODO(), User{Username: username})
+	col := getDentistCollection()
+	result, err := col.DeleteOne(context.TODO(), Dentist{Username: username})
 	_ = result
 
 	if err != nil {

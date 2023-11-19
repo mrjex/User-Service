@@ -28,3 +28,8 @@ func getUserCollection() *mongo.Collection {
 	col := client.Database("dentanoid").Collection("users")
 	return col
 }
+
+func getDentistCollection() *mongo.Collection {
+	col := client.Database("dentanoid").Collection("dentists")
+	return col
+}

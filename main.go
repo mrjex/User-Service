@@ -58,7 +58,7 @@ func main() {
 	// UPDATE
 	mqttClient.Subscribe("/dentists/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
-		var payload User
+		var payload Dentist
 		topic := strings.Split(m.Topic(), "/")
 		username := topic[len(topic)-1]
 
@@ -79,7 +79,7 @@ func main() {
 		username := topic[len(topic)-1]
 
 		delete(username)
-		fmt.Printf("Deleted Dentist: ", username)
+		fmt.Printf("Deleted Dentist: %s", username)
 
 	})
 
