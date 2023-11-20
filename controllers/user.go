@@ -1,6 +1,7 @@
-package main
+package controllers
 
 import (
+	"Group20/Dentanoid/database"
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -25,6 +26,6 @@ func userExists(username string) bool {
 }
 
 func getUserCollection() *mongo.Collection {
-	col := client.Database("dentanoid").Collection("users")
+	col := database.Database.Collection("users")
 	return col
 }
