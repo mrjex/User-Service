@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"Group20/Dentanoid/database"
+	"Group20/Dentanoid/schemas"
 	"context"
+	"fmt"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -21,8 +24,28 @@ func getUser(username string) *mongo.SingleResult {
 }
 
 func userExists(username string) bool {
-	user := getUser(username)
-	return user != nil
+    colPatients := getPatientCollection()
+    filterPatients := bson.M{"username": username}
+    patient := &schemas.Patient{}
+    dataPatients := colPatients.FindOne(context.TODO(), filterPatients)
+    dataPatients.Decode(patient)
+
+    colDentists := getDentistCollection()
+    filterDentists := bson.M{"username": username}
+    dentist := &schemas.Dentist{}
+    dataDentists := colDentists.FindOne(context.TODO(), filterDentists)
+    dataDentists.Decode(dentist)
+
+
+    if !(patient.Username == "" && dentist.Username == "") {
+        fmt.Printf("There exists one")
+    } else{
+        fmt.Printf("There doesnt exist one")
+    }
+
+
+    return !(patient.Username == "" && dentist.Username == "")
+
 }
 
 func getUserCollection() *mongo.Collection {
