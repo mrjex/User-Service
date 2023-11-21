@@ -53,7 +53,7 @@ func InitialisePatient (client mqtt.Client) {
 
 
     //UPDATE
-    client.Subscribe("grp20/patient/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenUpdate := client.Subscribe("grp20/patient/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		var payload schemas.Patient
 		username := GetPath(m)
@@ -67,6 +67,22 @@ func InitialisePatient (client mqtt.Client) {
 		fmt.Printf("%+v\n", payload)
 
 	})
+
+    if tokenUpdate.Error() != nil {
+        panic(tokenRead.Error())
+    }
+
+    //REMOVE
+    tokenRemove := client.Subscribe("grp20/patient/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+        
+        username := GetPath(m)
+        deletePatient(username)
+        fmt.Printf("Deleted Patient: %s", username)
+    })
+
+    if tokenRemove.Error() != nil{
+        panic(tokenRemove.Error())
+    }
 
 
 
@@ -126,6 +142,22 @@ func updatePatient(username string, payload schemas.Patient) bool {
 
     fmt.Printf("Updated Patient with Username: %v \n", username)
     return true
+}
+
+//REMOVE
+func deletePatient(username string) bool {
+    
+    col := getPatientCollection()
+    filter := bson.M{"username": username}
+    result, err := col.DeleteOne(context.TODO(), filter)
+    _ = result
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	fmt.Printf("Deleted Patient: %v \n", username)
+	return true
 }
 
 func getPatientCollection() *mongo.Collection {
