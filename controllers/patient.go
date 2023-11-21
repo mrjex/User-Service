@@ -26,8 +26,11 @@ func InitialisePatient (client mqtt.Client) {
         if err != nil {
             panic(err)
         }
-        go createPatient(payload.Username, payload.Password)
-        fmt.Printf("%+v\n", payload)
+        if createPatient(payload.Username, payload.Password) == true{
+            fmt.Printf("%+v\n", payload)
+        } else{
+            fmt.Printf("Didnt work")
+        }
 
     })
     if tokenCreate.Error() != nil {
@@ -53,6 +56,8 @@ func InitialisePatient (client mqtt.Client) {
 
 
     //UPDATE
+    //TODO
+    //Change subscription adress to get username in body
     tokenUpdate := client.Subscribe("grp20/patient/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		var payload schemas.Patient
@@ -63,16 +68,23 @@ func InitialisePatient (client mqtt.Client) {
 			panic(err)
 		}
 
-		updatePatient(username, payload)
-		fmt.Printf("%+v\n", payload)
+		if updatePatient(username, payload) == true{
+		    fmt.Printf("%+v\n", payload)
+        } else{
+            fmt.Printf("Didnt work")
+        }
+
 
 	})
 
     if tokenUpdate.Error() != nil {
         panic(tokenRead.Error())
-    }
+    }   
 
     //REMOVE
+    //TODO
+    //Change subscription adress to get username in body
+
     tokenRemove := client.Subscribe("grp20/patient/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
         
         username := GetPath(m)
@@ -90,13 +102,14 @@ func InitialisePatient (client mqtt.Client) {
 
 //CREATE
 func createPatient (username string, password string) bool {
-    col := getPatientCollection()
-    hashed, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-    doc := schemas.Patient{Username: username, Password: string(hashed)}
 
-    //if userExists(username) {
-    //    return false;
-    //}
+    if userExists(username) {
+        return false;
+    }
+
+    col := getPatientCollection()
+    hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+    doc := schemas.Patient{Username: username, Password: string(hashed)}
     
     result, err := col.InsertOne(context.TODO(), doc)
     if err != nil {
@@ -120,14 +133,14 @@ func getPatient(username string) schemas.Patient {
 
 //UPDATE
 func updatePatient(username string, payload schemas.Patient) bool {
+
+    if userExists(payload.Username) {
+        return false
+    }
     
     col := getPatientCollection()
     //Hash password
-    hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 14)
-
-    // if userExists(payload.Username) {
-        // return false
-    //}
+    hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
 
     update := bson.M{"$set": bson.M{"username": payload.Username, "password": string(hashed)}}
     filter := bson.M{"username": username}
@@ -166,3 +179,4 @@ func getPatientCollection() *mongo.Collection {
 }
 
 
+//TODO Responses

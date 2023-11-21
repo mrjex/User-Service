@@ -18,7 +18,7 @@ func InitialiseDentist(client mqtt.Client) {
 	// 	CREATE
 	client.Subscribe("grp20/dentists/post", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
-		var payload User
+		var payload schemas.Dentist
 		err := json.Unmarshal(m.Payload(), &payload)
 		if err != nil {
 			panic(err)
@@ -67,14 +67,17 @@ func InitialiseDentist(client mqtt.Client) {
 // CREATE
 func createDentist(username string, password string) bool {
 
-	col := getDentistCollection()
-	// Hash the password using Bcrypt
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	doc := schemas.Dentist{Username: username, Password: string(hashed)}
-
 	if userExists(username) {
 		return false
 	}
+
+	col := getDentistCollection()
+	// Hash the password using Bcrypt
+    fmt.Printf("Start")
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	doc := schemas.Dentist{Username: username, Password: string(hashed)}
+    fmt.Printf("Stop")
+
 
 	result, err := col.InsertOne(context.TODO(), doc)
 	if err != nil {
@@ -98,14 +101,14 @@ func getDentist(username string) schemas.Dentist {
 // UPDATE
 func updateDentist(username string, payload schemas.Dentist) bool {
 
-	col := getDentistCollection()
-	// Hash the password using Bcrypt
-	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 14)
-	doc := schemas.Dentist{Username: payload.Username, Password: string(hashed)}
-
 	if userExists(payload.Username) {
 		return false
 	}
+
+	col := getDentistCollection()
+	// Hash the password using Bcrypt
+	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
+	doc := schemas.Dentist{Username: payload.Username, Password: string(hashed)}
 
 	result, err := col.UpdateOne(context.TODO(), schemas.Dentist{Username: payload.Username}, doc)
 	_ = result
