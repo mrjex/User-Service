@@ -12,12 +12,14 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func InitialisePatient (client mqtt.Client) {
     
-    token := client.Subscribe("grp20/req/patient/create", byte(0), func(c mqtt.Client, m mqtt.Message){
+    //CREATE
+    tokenCreate := client.Subscribe("grp20/req/patient/create", byte(0), func(c mqtt.Client, m mqtt.Message){
 
 		var payload schemas.Patient
         err := json.Unmarshal(m.Payload(), &payload)
@@ -28,9 +30,45 @@ func InitialisePatient (client mqtt.Client) {
         fmt.Printf("%+v\n", payload)
 
     })
-    if token.Error() != nil {
-        panic(token.Error())
+    if tokenCreate.Error() != nil {
+        panic(tokenCreate.Error())
     }
+
+    //READ
+    tokenRead := client.Subscribe("grp20/req/patient/read", byte(0), func(c mqtt.Client, m mqtt.Message){
+        
+        var payload schemas.Patient
+        err := json.Unmarshal(m.Payload(), &payload)
+        if err != nil {
+            panic(err)
+        }
+        user := getPatient(payload.Username)
+		fmt.Printf("%+v\n", user)
+
+    })
+
+    if tokenRead.Error() != nil {
+        panic(tokenRead.Error())
+    }
+
+
+    //UPDATE
+    client.Subscribe("grp20/patient/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+
+		var payload schemas.Patient
+		username := GetPath(m)
+
+		err := json.Unmarshal(m.Payload(), &payload)
+		if err != nil {
+			panic(err)
+		}
+
+		updatePatient(username, payload)
+		fmt.Printf("%+v\n", payload)
+
+	})
+
+
 
 }
 
@@ -52,6 +90,42 @@ func createPatient (username string, password string) bool {
     fmt.Printf("Registered Patient ID: %v \n", result.InsertedID)
     return true
 
+}
+
+//READ
+func getPatient(username string) schemas.Patient {
+    col := getPatientCollection()
+    user := &schemas.Patient{}
+    filter := bson.M{"username": username}
+    data := col.FindOne(context.TODO(), filter)
+    data.Decode(user)
+    return *user
+}
+
+//UPDATE
+func updatePatient(username string, payload schemas.Patient) bool {
+    
+    col := getPatientCollection()
+    //Hash password
+    hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 14)
+
+    // if userExists(payload.Username) {
+        // return false
+    //}
+
+    update := bson.M{"$set": bson.M{"username": payload.Username, "password": string(hashed)}}
+    filter := bson.M{"username": username}
+
+
+    result, err := col.UpdateOne(context.TODO(), filter, update)
+    _ = result
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Updated Patient with Username: %v \n", username)
+    return true
 }
 
 func getPatientCollection() *mongo.Collection {
