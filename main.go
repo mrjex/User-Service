@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Group20/Dentanoid/controllers"
 	"Group20/Dentanoid/database"
 	"Group20/Dentanoid/mqtt"
 	"log"
@@ -26,6 +27,8 @@ func main() {
 
 	// Connect to MQTT
 	mqtt.GetInstance()
+
+    controllers.InitialisePatient(mqtt.GetInstance())
 
 	<-c
 	// Variant #1 MQTT
