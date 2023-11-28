@@ -13,7 +13,7 @@ var Database *mongo.Database
 
 func Connect() {
 	c, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(os.Getenv("MONGO_URI")))
-	Database = c.Database("Dentanoid")
+	Database = c.Database("Users")
 	if err != nil {
 		panic(err)
 	}

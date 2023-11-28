@@ -27,6 +27,7 @@ func main() {
 	// Connect to MQTT
 	mqtt.GetInstance()
 
+
 	<-c
 	// Variant #1 MQTT
 	/*
