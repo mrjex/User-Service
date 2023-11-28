@@ -14,7 +14,7 @@ import (
 func TestMain(m *testing.M) {
 	err := godotenv.Load("../.env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Error loading .env file")
 	}
 	database.Connect()
 	client = mqtt.GetInstance()
