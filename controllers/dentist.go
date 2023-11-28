@@ -23,7 +23,7 @@ func InitialiseDentist(client mqtt.Client) {
 		if err != nil {
 			panic(err)
 		}
-		createDentist(payload.Username, payload.Password)
+		CreateDentist(payload.Username, payload.Password)
 		fmt.Printf("%+v\n", payload)
 
 	})
@@ -65,7 +65,7 @@ func InitialiseDentist(client mqtt.Client) {
 }
 
 // CREATE
-func createDentist(username string, password string) bool {
+func CreateDentist(username string, password string) bool {
 
 	col := getDentistCollection()
 	// Hash the password using Bcrypt
