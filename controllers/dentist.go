@@ -32,7 +32,7 @@ func InitialiseDentist(client mqtt.Client) {
 	client.Subscribe("grp20/dentists/get/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		username := GetPath(m)
-		user := getDentist(username)
+		user := GetDentist(username)
 		fmt.Printf("%+v\n", user)
 
 	})
@@ -48,7 +48,7 @@ func InitialiseDentist(client mqtt.Client) {
 			panic(err)
 		}
 
-		updateDentist(username, payload)
+		UpdateDentist(username, payload)
 		fmt.Printf("%+v\n", payload)
 
 	})
@@ -57,7 +57,7 @@ func InitialiseDentist(client mqtt.Client) {
 	client.Subscribe("grp20/dentists/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		username := GetPath(m)
-		deleteDentist(username)
+		DeleteDentist(username)
 		fmt.Printf("Deleted Dentist: %s", username)
 
 	})
@@ -72,12 +72,10 @@ func CreateDentist(username string, password string) bool {
 	}
 
 	col := getDentistCollection()
+
 	// Hash the password using Bcrypt
-    fmt.Printf("Start")
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	doc := schemas.Dentist{Username: username, Password: string(hashed)}
-    fmt.Printf("Stop")
-
 
 	result, err := col.InsertOne(context.TODO(), doc)
 	if err != nil {
@@ -90,7 +88,7 @@ func CreateDentist(username string, password string) bool {
 }
 
 // READ
-func getDentist(username string) schemas.Dentist {
+func GetDentist(username string) schemas.Dentist {
 	col := getDentistCollection()
 	data := col.FindOne(context.TODO(), schemas.Dentist{Username: username})
 	user := schemas.Dentist{}
@@ -99,7 +97,7 @@ func getDentist(username string) schemas.Dentist {
 }
 
 // UPDATE
-func updateDentist(username string, payload schemas.Dentist) bool {
+func UpdateDentist(username string, payload schemas.Dentist) bool {
 
 	if userExists(payload.Username) {
 		return false
@@ -123,7 +121,7 @@ func updateDentist(username string, payload schemas.Dentist) bool {
 }
 
 // DELETE
-func deleteDentist(username string) bool {
+func DeleteDentist(username string) bool {
 
 	col := getDentistCollection()
 	result, err := col.DeleteOne(context.TODO(), schemas.Dentist{Username: username})

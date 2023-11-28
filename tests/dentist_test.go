@@ -3,6 +3,7 @@ package tests
 import (
 	"Group20/Dentanoid/controllers"
 	"Group20/Dentanoid/database"
+	"Group20/Dentanoid/mqtt"
 	"log"
 	"os"
 	"testing"
@@ -16,6 +17,7 @@ func TestMain(m *testing.M) {
 		log.Fatal("Error loading .env file")
 	}
 	database.Connect()
+	client = mqtt.GetInstance()
 	code := m.Run()
 	os.Exit(code)
 }
@@ -23,7 +25,10 @@ func TestMain(m *testing.M) {
 func TestCreate(t *testing.T) {
 	result := controllers.CreateDentist("mike", "password")
 	if !result {
-		t.Error("got no result")
+		t.Error("Dentist Creation Failed")
 	}
-
+	result = controllers.DeleteDentist("mike")
+	if !result {
+		t.Error("Dentist Deletion Failed")
+	}
 }
