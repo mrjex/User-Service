@@ -10,6 +10,7 @@ image: golang:latest
 
 stages:
   - build
+  - test
 
 compile:
   stage: build
@@ -21,3 +22,10 @@ compile:
   artifacts:
     paths:
       - binaries
+
+test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - go test ./... -v
