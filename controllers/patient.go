@@ -11,8 +11,8 @@ import (
 	"log"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,12 +26,7 @@ func InitialisePatient (client mqtt.Client) {
         if err != nil {
             panic(err)
         }
-        if createPatient(payload.Username, payload.Password) == true{
-            fmt.Printf("%+v\n", payload)
-        } else{
-            fmt.Printf("Didnt work")
-        }
-
+        go createPatient(payload.Username, payload.Password, client)
     })
     if tokenCreate.Error() != nil {
         panic(tokenCreate.Error())
@@ -45,9 +40,7 @@ func InitialisePatient (client mqtt.Client) {
         if err != nil {
             panic(err)
         }
-        user := getPatient(payload.Username)
-		fmt.Printf("%+v\n", user)
-
+        go getPatient(payload.Username, client)
     })
 
     if tokenRead.Error() != nil {
@@ -85,11 +78,15 @@ func InitialisePatient (client mqtt.Client) {
     //TODO
     //Change subscription adress to get username in body
 
-    tokenRemove := client.Subscribe("grp20/patient/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenRemove := client.Subscribe("grp20/req/patient/delete", byte(0), func(c mqtt.Client, m mqtt.Message) {
         
-        username := GetPath(m)
-        deletePatient(username)
-        fmt.Printf("Deleted Patient: %s", username)
+        var payload schemas.Patient
+        err := json.Unmarshal(m.Payload(), &payload)
+        if err != nil {
+            panic(err)
+        }
+
+        go deletePatient(payload.Username, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -101,41 +98,65 @@ func InitialisePatient (client mqtt.Client) {
 }
 
 //CREATE
-func createPatient (username string, password string) bool {
+func createPatient (username string, password string, client mqtt.Client) {
+    var message string
 
     if userExists(username) {
-        return false;
+        message = "{\"Message\": \"User already exists\",\"Code\": \"409\"}"
+    }   else{
+
+        col := getPatientCollection()
+        hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+        doc := schemas.Patient{Username: username, Password: string(hashed)}
+        
+        result, err := col.InsertOne(context.TODO(), doc)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        message = "{\"Message\": \"User created\",\"Code\": \"201\"}"
+
+        fmt.Printf("Registered Patient ID: %v \n", result.InsertedID)
     }
 
-    col := getPatientCollection()
-    hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-    doc := schemas.Patient{Username: username, Password: string(hashed)}
-    
-    result, err := col.InsertOne(context.TODO(), doc)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("Registered Patient ID: %v \n", result.InsertedID)
-    return true
-
+    client.Publish("grp20/res/patient/create", 0, false, message)
 }
 
 //READ
-func getPatient(username string) schemas.Patient {
+func getPatient(username string, client mqtt.Client){
+    var message string
+    var code string
+
     col := getPatientCollection()
     user := &schemas.Patient{}
     filter := bson.M{"username": username}
     data := col.FindOne(context.TODO(), filter)
     data.Decode(user)
-    return *user
+
+    jsonData, err := json.Marshal(user) 
+    if err != nil{
+        log.Fatal(err)
+    }
+
+    if user.Username == ""{
+        code = "404"
+    } else {
+        code = "200"
+        fmt.Printf(user.Username)
+    }
+    message = AddCodeStringJson(string(jsonData), code)
+
+    client.Publish("grp20/res/patient/read", 0, false, message)
+
+
 }
 
 //UPDATE
-func updatePatient(username string, payload schemas.Patient) bool {
+func updatePatient(username string, payload schemas.Patient) {
 
     if userExists(payload.Username) {
-        return false
+        message := "{\"Message\": \"Username taken\"}"
+        code := "409"
     }
     
     col := getPatientCollection()
@@ -154,23 +175,33 @@ func updatePatient(username string, payload schemas.Patient) bool {
     }
 
     fmt.Printf("Updated Patient with Username: %v \n", username)
-    return true
 }
 
 //REMOVE
-func deletePatient(username string) bool {
+func deletePatient(username string, client mqtt.Client) {
+    var message string
+    var code string
     
     col := getPatientCollection()
     filter := bson.M{"username": username}
     result, err := col.DeleteOne(context.TODO(), filter)
-    _ = result
+
 
     if err != nil {
         log.Fatal(err)
     }
 
-	fmt.Printf("Deleted Patient: %v \n", username)
-	return true
+    if result.DeletedCount == 1 {
+        message = "{\"Message\": \""+ username +" deleted\"}"
+        code = "200"
+	    fmt.Printf("Deleted Patient: %v \n", username)
+    } else{
+        message = "{\"Message\": \"Error deleting user\"}" 
+        code = "404"
+    }
+
+    message = AddCodeStringJson(message, code)
+    client.Publish("grp20/res/patient/delete", 0, false, message)
 }
 
 func getPatientCollection() *mongo.Collection {
