@@ -38,9 +38,9 @@ func userExists(username string) bool {
 
 
     if !(patient.Username == "" && dentist.Username == "") {
-        fmt.Printf("There exists one")
+        fmt.Printf("There exists one\n")
     } else{
-        fmt.Printf("There doesnt exist one")
+        fmt.Printf("There doesnt exist one\n")
     }
 
 
