@@ -11,6 +11,13 @@ import (
 Extracts the topic from an mqtt message and returns the last token of its topic
 e.g: '/users/mike' -> 'mike'
 */
+
+type UpdateRequest struct {
+    OldName string   
+    Username string
+    Password string
+}
+
 func GetPath(message mqtt.Message) string {
 	tokens := strings.Split(message.Topic(), "/")
 	result := tokens[len(tokens)-1]
