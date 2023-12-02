@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
