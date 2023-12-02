@@ -25,7 +25,6 @@ func GetPath(message mqtt.Message) string {
 
 //Adds mqtt code to stringified json
 func AddCodeStringJson (json string, code string) string {
-    fmt.Printf("Here")
     var newJson string
     length := len(json)
     index := 0

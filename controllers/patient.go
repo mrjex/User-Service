@@ -139,7 +139,6 @@ func getPatient(username string, client mqtt.Client){
         code = "404"
     } else {
         code = "200"
-        fmt.Printf(user.Username)
     }
     message = AddCodeStringJson(string(jsonData), code)
 
@@ -154,9 +153,6 @@ func updatePatient(payload updateRequest, client mqtt.Client) {
     var code string
     var update bson.M
     
-    fmt.Printf(string(payload.Username))
-
-
     if userExists(payload.Username) {
         message = "{\"Message\": \"Username taken\"}"
         code = "409"
