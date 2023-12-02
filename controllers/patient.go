@@ -51,21 +51,18 @@ func InitialisePatient (client mqtt.Client) {
     //UPDATE
     //TODO
     //Change subscription adress to get username in body
-    tokenUpdate := client.Subscribe("grp20/patient/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenUpdate := client.Subscribe("grp20/req/patient/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
-		var payload schemas.Patient
-		username := GetPath(m)
+
+		var payload updateRequest
+
 
 		err := json.Unmarshal(m.Payload(), &payload)
 		if err != nil {
 			panic(err)
 		}
 
-		if updatePatient(username, payload) == true{
-		    fmt.Printf("%+v\n", payload)
-        } else{
-            fmt.Printf("Didnt work")
-        }
+		go updatePatient(payload, client)
 
 
 	})
@@ -152,29 +149,54 @@ func getPatient(username string, client mqtt.Client){
 }
 
 //UPDATE
-func updatePatient(username string, payload schemas.Patient) {
+func updatePatient(payload updateRequest, client mqtt.Client) {
+    var message string
+    var code string
+    var update bson.M
+    
+    fmt.Printf(string(payload.Username))
+
 
     if userExists(payload.Username) {
-        message := "{\"Message\": \"Username taken\"}"
-        code := "409"
+        message = "{\"Message\": \"Username taken\"}"
+        code = "409"
+    } else{
+        
+        col := getPatientCollection()
+        //Hash password, might introduce performance issues when done before checking if olduser exists
+        hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
+
+        if (payload.Username != "") && (payload.Password != ""){
+            update = bson.M{"$set": bson.M{"username": payload.Username, "password": string(hashed)}}
+        } else if payload.Username != "" {
+            update = bson.M{"$set": bson.M{"username": payload.Username}}
+        } else if payload.Password != ""{
+            update = bson.M{"$set": bson.M{"password": string(hashed)}}
+        }
+
+        filter := bson.M{"username": payload.OldName}
+
+
+        result, err := col.UpdateOne(context.TODO(), filter, update)
+
+        if err != nil {
+            log.Fatal(err)
+            fmt.Printf("Updated failed for Patient with Username: %v \n", payload.OldName)
+            code = "500"
+            message = "\"message\": \"Update failed\""
+        } else if result.MatchedCount == 1{
+            fmt.Printf("Updated Patient with Username: %v \n", payload.OldName)
+            code = "200"
+            message = "\"message\": \"Patient updated\""
+        } else {
+            fmt.Printf("No user with that name")
+            code = "404"
+            message = "\"message\": \"User not found\""
+        }
+
     }
-    
-    col := getPatientCollection()
-    //Hash password
-    hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
-
-    update := bson.M{"$set": bson.M{"username": payload.Username, "password": string(hashed)}}
-    filter := bson.M{"username": username}
-
-
-    result, err := col.UpdateOne(context.TODO(), filter, update)
-    _ = result
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("Updated Patient with Username: %v \n", username)
+        message = AddCodeStringJson(message, code)
+        client.Publish("grp20/res/patient/update", 0, false, message)
 }
 
 //REMOVE
