@@ -26,7 +26,7 @@ func InitialisePatient (client mqtt.Client) {
         if err != nil {
             panic(err)
         }
-        go createPatient(payload.Username, payload.Password, client)
+        go CreatePatient(payload.Username, payload.Password, client)
     })
     if tokenCreate.Error() != nil {
         panic(tokenCreate.Error())
@@ -40,7 +40,7 @@ func InitialisePatient (client mqtt.Client) {
         if err != nil {
             panic(err)
         }
-        go getPatient(payload.Username, client)
+        go GetPatient(payload.Username, client)
     })
 
     if tokenRead.Error() != nil {
@@ -54,7 +54,7 @@ func InitialisePatient (client mqtt.Client) {
     tokenUpdate := client.Subscribe("grp20/req/patient/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 
-		var payload updateRequest
+		var payload UpdateRequest
 
 
 		err := json.Unmarshal(m.Payload(), &payload)
@@ -62,7 +62,7 @@ func InitialisePatient (client mqtt.Client) {
 			panic(err)
 		}
 
-		go updatePatient(payload, client)
+		go UpdatePatient(payload, client)
 
 
 	})
@@ -83,7 +83,7 @@ func InitialisePatient (client mqtt.Client) {
             panic(err)
         }
 
-        go deletePatient(payload.Username, client)
+        go DeletePatient(payload.Username, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -95,11 +95,13 @@ func InitialisePatient (client mqtt.Client) {
 }
 
 //CREATE
-func createPatient (username string, password string, client mqtt.Client) {
+func CreatePatient (username string, password string, client mqtt.Client) bool {
     var message string
+    var returnVal bool
 
     if userExists(username) {
         message = "{\"Message\": \"User already exists\",\"Code\": \"409\"}"
+        returnVal = false
     }   else{
 
         col := getPatientCollection()
@@ -114,15 +116,19 @@ func createPatient (username string, password string, client mqtt.Client) {
         message = "{\"Message\": \"User created\",\"Code\": \"201\"}"
 
         fmt.Printf("Registered Patient ID: %v \n", result.InsertedID)
+
+        returnVal = true
     }
 
     client.Publish("grp20/res/patient/create", 0, false, message)
+    return returnVal
 }
 
 //READ
-func getPatient(username string, client mqtt.Client){
+func GetPatient(username string, client mqtt.Client) bool{
     var message string
     var code string
+    var returnVal bool
 
     col := getPatientCollection()
     user := &schemas.Patient{}
@@ -137,25 +143,29 @@ func getPatient(username string, client mqtt.Client){
 
     if user.Username == ""{
         code = "404"
+        returnVal = false
     } else {
         code = "200"
+        returnVal = true
     }
     message = AddCodeStringJson(string(jsonData), code)
 
     client.Publish("grp20/res/patient/read", 0, false, message)
 
-
+    return returnVal
 }
 
 //UPDATE
-func updatePatient(payload updateRequest, client mqtt.Client) {
+func UpdatePatient(payload UpdateRequest, client mqtt.Client) bool{
     var message string
     var code string
     var update bson.M
+    var returnVal bool
     
     if userExists(payload.Username) {
         message = "{\"Message\": \"Username taken\"}"
         code = "409"
+        returnVal = false
     } else{
         
         col := getPatientCollection()
@@ -180,25 +190,30 @@ func updatePatient(payload updateRequest, client mqtt.Client) {
             fmt.Printf("Updated failed for Patient with Username: %v \n", payload.OldName)
             code = "500"
             message = "\"message\": \"Update failed\""
+            returnVal = false
         } else if result.MatchedCount == 1{
             fmt.Printf("Updated Patient with Username: %v \n", payload.OldName)
             code = "200"
             message = "\"message\": \"Patient updated\""
+            returnVal = true
         } else {
             fmt.Printf("No user with that name")
             code = "404"
             message = "\"message\": \"User not found\""
+            returnVal = false
         }
 
     }
         message = AddCodeStringJson(message, code)
         client.Publish("grp20/res/patient/update", 0, false, message)
+        return returnVal
 }
 
 //REMOVE
-func deletePatient(username string, client mqtt.Client) {
+func DeletePatient(username string, client mqtt.Client) bool{
     var message string
     var code string
+    var returnVal bool
     
     col := getPatientCollection()
     filter := bson.M{"username": username}
@@ -212,14 +227,17 @@ func deletePatient(username string, client mqtt.Client) {
     if result.DeletedCount == 1 {
         message = "{\"Message\": \""+ username +" deleted\"}"
         code = "200"
+        returnVal = true
 	    fmt.Printf("Deleted Patient: %v \n", username)
     } else{
         message = "{\"Message\": \"Error deleting user\"}" 
         code = "404"
+        returnVal = false
     }
 
     message = AddCodeStringJson(message, code)
     client.Publish("grp20/res/patient/delete", 0, false, message)
+    return returnVal
 }
 
 func getPatientCollection() *mongo.Collection {
