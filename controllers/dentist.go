@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"go.mongodb.org/mongo-driver/bson"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -16,124 +17,220 @@ import (
 func InitialiseDentist(client mqtt.Client) {
 
 	// 	CREATE
-	client.Subscribe("grp20/dentists/post", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenCreate := client.Subscribe("grp20/req/dentist/create", byte(0), func(c mqtt.Client, m mqtt.Message){
 
 		var payload schemas.Dentist
-		err := json.Unmarshal(m.Payload(), &payload)
-		if err != nil {
-			panic(err)
-		}
-		CreateDentist(payload.Username, payload.Password)
-		fmt.Printf("%+v\n", payload)
-
-	})
+        err := json.Unmarshal(m.Payload(), &payload)
+        if err != nil {
+            panic(err)
+        }
+        go CreateDentist(payload.Username, payload.Password, client)
+    })
+    if tokenCreate.Error() != nil {
+        panic(tokenCreate.Error())
+    }
 
 	// READ
-	client.Subscribe("grp20/dentists/get/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenRead := client.Subscribe("grp20/req/dentist/read", byte(0), func(c mqtt.Client, m mqtt.Message){
+        
+        var payload schemas.Dentist
+        err := json.Unmarshal(m.Payload(), &payload)
+        if err != nil {
+            panic(err)
+        }
+        go GetDentist(payload.Username, client)
+    })
 
-		username := GetPath(m)
-		user := GetDentist(username)
-		fmt.Printf("%+v\n", user)
-
-	})
+    if tokenRead.Error() != nil {
+        panic(tokenRead.Error())
+    }
 
 	// UPDATE
-	client.Subscribe("grp20/dentists/update/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenUpdate := client.Subscribe("grp20/req/dentist/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
-		var payload schemas.Dentist
-		username := GetPath(m)
+
+		var payload UpdateRequest
+
 
 		err := json.Unmarshal(m.Payload(), &payload)
 		if err != nil {
 			panic(err)
 		}
 
-		UpdateDentist(username, payload)
-		fmt.Printf("%+v\n", payload)
+		go UpdateDentist(payload, client)
+
 
 	})
+
+    if tokenUpdate.Error() != nil {
+        panic(tokenRead.Error())
+    }   
 
 	//DELETE
-	client.Subscribe("grp20/dentists/delete/+", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenRemove := client.Subscribe("grp20/req/dentist/delete", byte(0), func(c mqtt.Client, m mqtt.Message) {
+        
+        var payload schemas.Dentist
+        err := json.Unmarshal(m.Payload(), &payload)
+        if err != nil {
+            panic(err)
+        }
 
-		username := GetPath(m)
-		DeleteDentist(username)
-		fmt.Printf("Deleted Dentist: %s", username)
+        go DeleteDentist(payload.Username, client)
+    })
 
-	})
+    if tokenRemove.Error() != nil{
+        panic(tokenRemove.Error())
+    }
 
 }
 
 // CREATE
-func CreateDentist(username string, password string) bool {
+func CreateDentist(username string, password string, client mqtt.Client) bool {
 
-	if userExists(username) {
-		return false
-	}
+    var message string
+    var returnVal bool
 
-	col := getDentistCollection()
+    if userExists(username) {
+        message = "{\"Message\": \"User already exists\",\"Code\": \"409\"}"
+        returnVal = false
+    }   else{
 
-	// Hash the password using Bcrypt
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	doc := schemas.Dentist{Username: username, Password: string(hashed)}
+        col := getDentistCollection()
+        hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+        doc := schemas.Dentist{Username: username, Password: string(hashed)}
+        
+        result, err := col.InsertOne(context.TODO(), doc)
+        if err != nil {
+            log.Fatal(err)
+        }
 
-	result, err := col.InsertOne(context.TODO(), doc)
-	if err != nil {
-		log.Fatal(err)
-	}
+        message = "{\"Message\": \"User created\",\"Code\": \"201\"}"
 
-	fmt.Printf("Registered Dentist ID: %v \n", result.InsertedID)
-	return true
+        fmt.Printf("Registered Dentist ID: %v \n", result.InsertedID)
+
+        returnVal = true
+    }
+
+    client.Publish("grp20/res/dentist/create", 0, false, message)
+    return returnVal
 
 }
 
 // READ
-func GetDentist(username string) schemas.Dentist {
-	col := getDentistCollection()
-	data := col.FindOne(context.TODO(), schemas.Dentist{Username: username})
-	user := schemas.Dentist{}
-	data.Decode(user)
-	return user
+func GetDentist(username string, client mqtt.Client) bool {
+    var message string
+    var code string
+    var returnVal bool
+
+    col := getDentistCollection()
+    user := &schemas.Dentist{}
+    filter := bson.M{"username": username}
+    data := col.FindOne(context.TODO(), filter)
+    data.Decode(user)
+
+    jsonData, err := json.Marshal(user) 
+    if err != nil{
+        log.Fatal(err)
+    }
+
+    if user.Username == ""{
+        code = "404"
+        returnVal = false
+    } else {
+        code = "200"
+        returnVal = true
+    }
+    message = AddCodeStringJson(string(jsonData), code)
+
+    client.Publish("grp20/res/dentist/read", 0, false, message)
+
+    return returnVal
 }
 
 // UPDATE
-func UpdateDentist(username string, payload schemas.Dentist) bool {
+func UpdateDentist(payload UpdateRequest, client mqtt.Client) bool {
+    var message string
+    var code string
+    var update bson.M
+    var returnVal bool
+    
+    if userExists(payload.Username) {
+        message = "{\"Message\": \"Username taken\"}"
+        code = "409"
+        returnVal = false
+    } else{
+        
+        col := getDentistCollection()
+        //Hash password, might introduce performance issues when done before checking if olduser exists
+        hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
 
-	if userExists(payload.Username) {
-		return false
-	}
+        if (payload.Username != "") && (payload.Password != ""){
+            update = bson.M{"$set": bson.M{"username": payload.Username, "password": string(hashed)}}
+        } else if payload.Username != "" {
+            update = bson.M{"$set": bson.M{"username": payload.Username}}
+        } else if payload.Password != ""{
+            update = bson.M{"$set": bson.M{"password": string(hashed)}}
+        }
 
-	col := getDentistCollection()
-	// Hash the password using Bcrypt
-	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
-	doc := schemas.Dentist{Username: payload.Username, Password: string(hashed)}
+        filter := bson.M{"username": payload.OldName}
 
-	result, err := col.UpdateOne(context.TODO(), schemas.Dentist{Username: payload.Username}, doc)
-	_ = result
 
-	if err != nil {
-		log.Fatal(err)
-	}
+        result, err := col.UpdateOne(context.TODO(), filter, update)
 
-	fmt.Printf("Updated Dentist with Username: %v \n", username)
-	return true
+        if err != nil {
+            log.Fatal(err)
+            fmt.Printf("Updated failed for Dentist with Username: %v \n", payload.OldName)
+            code = "500"
+            message = "\"message\": \"Update failed\""
+            returnVal = false
+        } else if result.MatchedCount == 1{
+            fmt.Printf("Updated Dentist with Username: %v \n", payload.OldName)
+            code = "200"
+            message = "\"message\": \"Dentist updated\""
+            returnVal = true
+        } else {
+            fmt.Printf("No user with that name")
+            code = "404"
+            message = "\"message\": \"User not found\""
+            returnVal = false
+        }
+
+    }
+        message = AddCodeStringJson(message, code)
+        client.Publish("grp20/res/dentist/update", 0, false, message)
+        return returnVal
 
 }
 
 // DELETE
-func DeleteDentist(username string) bool {
+func DeleteDentist(username string, client mqtt.Client) bool {
+    var message string
+    var code string
+    var returnVal bool
+    
+    col := getDentistCollection()
+    filter := bson.M{"username": username}
+    result, err := col.DeleteOne(context.TODO(), filter)
 
-	col := getDentistCollection()
-	result, err := col.DeleteOne(context.TODO(), schemas.Dentist{Username: username})
-	_ = result
 
-	if err != nil {
-		log.Fatal(err)
-	}
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	fmt.Printf("Deleted Dentist: %v \n", username)
-	return true
+    if result.DeletedCount == 1 {
+        message = "{\"Message\": \""+ username +" deleted\"}"
+        code = "200"
+        returnVal = true
+	    fmt.Printf("Deleted Dentist %v \n", username)
+    } else{
+        message = "{\"Message\": \"Error deleting user\"}" 
+        code = "404"
+        returnVal = false
+    }
 
+    message = AddCodeStringJson(message, code)
+    client.Publish("grp20/res/dentist/delete", 0, false, message)
+    return returnVal
 }
 
 func getDentistCollection() *mongo.Collection {
