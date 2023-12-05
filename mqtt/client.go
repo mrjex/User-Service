@@ -1,6 +1,7 @@
-package main
+package mqtt
 
 import (
+	"Group20/Dentanoid/controllers"
 	"fmt"
 	"log"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 
 var mqtt_client mqtt.Client
 
-func getInstance() mqtt.Client {
+func GetInstance() mqtt.Client {
 
 	if mqtt_client == nil {
 		mqtt_client = mqtt.NewClient(getOptions())
@@ -47,6 +48,8 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	fmt.Println("MQTT client is connected")
+	controllers.InitialiseDentist(client)
+    controllers.InitialisePatient(client)
 }
 
 var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
