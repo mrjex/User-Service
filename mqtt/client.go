@@ -33,7 +33,7 @@ func getOptions() *mqtt.ClientOptions {
 	}
 	var opts = mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s", url))
-	opts.SetClientID("go_mqtt_client")
+	opts.SetClientID("go_mqtt_clien3049u124hu31h4ui3h4uih312i4ht")
 	opts.SetUsername("emqx")
 	opts.SetPassword("public")
 	opts.SetDefaultPublishHandler(messagePubHandler)
