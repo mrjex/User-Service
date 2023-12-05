@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"Group20/Dentanoid/schemas"
+	"encoding/json"
 	"strings"
+    "fmt"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -15,6 +18,17 @@ type UpdateRequest struct {
     Username string
     Password string
 }
+
+type Res struct {
+    Status    int             `json:"status,omitempty"`
+    RequestID string          `json:"requestID,omitempty"`
+    Message   string          `json:"message,omitempty"`
+    Patient   *schemas.Patient `json:"patient,omitempty"`
+    Dentist   *schemas.Dentist `json:"dentist,omitempty"`
+}
+
+
+
 
 func GetPath(message mqtt.Message) string {
 	tokens := strings.Split(message.Topic(), "/")
@@ -36,4 +50,21 @@ func AddCodeStringJson (json string, code string) string {
     }
     newJson = newJson + ",\"Code\": \"" + code + "\"}"
     return newJson
+}
+
+func PublishReturnMessage(returnData Res, topic string, client mqtt.Client) {
+
+    returnJson, err := json.Marshal(returnData)
+    if err != nil {
+        panic(err)
+    }
+
+    returnString := string(returnJson)
+    fmt.Printf(returnString)
+
+    client.Publish(topic, 0, false, returnString)
+
+    
+
+    
 }
