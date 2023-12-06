@@ -53,7 +53,7 @@ func InitialisePatient (client mqtt.Client) {
         if err2 != nil {
             panic(err2)
         }
-        go GetPatient(payload.Username, returnData, client)
+        go GetPatient(payload.ID, returnData, client)
     })
 
     if tokenRead.Error() != nil {
@@ -104,7 +104,7 @@ func InitialisePatient (client mqtt.Client) {
             panic(err2)
         }
 
-        go DeletePatient(payload.Username, returnData, client)
+        go DeletePatient(payload.ID, returnData, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -127,11 +127,11 @@ func CreatePatient (patient schemas.Patient, returnData Res, client mqtt.Client)
 
         col := getPatientCollection()
         hashed, err := bcrypt.GenerateFromPassword([]byte(patient.Password), 12)
-        doc := schemas.Patient{Username: patient.Username, Password: string(hashed)}
+        patient.Password = string(hashed)
 
         patient.Password = "" 
         
-        result, err := col.InsertOne(context.TODO(), doc)
+        result, err := col.InsertOne(context.TODO(), patient)
         if err != nil {
             log.Fatal(err)
         }
@@ -153,12 +153,12 @@ func CreatePatient (patient schemas.Patient, returnData Res, client mqtt.Client)
 }
 
 //READ
-func GetPatient(username string, returnData Res, client mqtt.Client) bool{
+func GetPatient(id primitive.ObjectID, returnData Res, client mqtt.Client) bool{
     var returnVal bool
 
     col := getPatientCollection()
     user := &schemas.Patient{}
-    filter := bson.M{"username": username}
+    filter := bson.M{"_id": id}
     data := col.FindOne(context.TODO(), filter)
     data.Decode(user)
 
@@ -167,11 +167,12 @@ func GetPatient(username string, returnData Res, client mqtt.Client) bool{
         returnVal = false
     } else {
         returnData.Status = 200
+        user.Password = ""
         returnData.Patient = user
         returnVal = true
     }
 
-    PublishReturnMessage(returnData, "grp20/req/patients/get", client)
+    PublishReturnMessage(returnData, "grp20/res/patients/get", client)
 
     return returnVal
 }
@@ -199,7 +200,7 @@ func UpdatePatient(payload UpdateRequest, returnData Res, client mqtt.Client) bo
             update = bson.M{"$set": bson.M{"password": string(hashed)}}
         }
 
-        filter := bson.M{"username": payload.OldName}
+        filter := bson.M{"_id": payload.ID}
 
 
         result, err := col.UpdateOne(context.TODO(), filter, update)
@@ -229,16 +230,16 @@ func UpdatePatient(payload UpdateRequest, returnData Res, client mqtt.Client) bo
         }
 
     }
-        PublishReturnMessage(returnData, "grp20/req/patients/update", client)
+        PublishReturnMessage(returnData, "grp20/res/patients/update", client)
         return returnVal
 }
 
 //REMOVE
-func DeletePatient(username string, returnData Res, client mqtt.Client) bool{
+func DeletePatient(id primitive.ObjectID, returnData Res, client mqtt.Client) bool{
     var returnVal bool
     
     col := getPatientCollection()
-    filter := bson.M{"username": username}
+    filter := bson.M{"_id": id}
     result, err := col.DeleteOne(context.TODO(), filter)
 
 
@@ -249,10 +250,10 @@ func DeletePatient(username string, returnData Res, client mqtt.Client) bool{
     if result.DeletedCount == 1 {
 
         returnData.Status = 200
-        returnData.Message = username + "deleted"
+        returnData.Message = "User with id: " + id.Hex() + " deleted"
 
         returnVal = true
-	    fmt.Printf("Deleted Patient: %v \n", username)
+	    fmt.Printf("Deleted Patient: %v \n", id.Hex())
 
     } else{
 
@@ -262,7 +263,7 @@ func DeletePatient(username string, returnData Res, client mqtt.Client) bool{
         returnVal = false
     }
 
-    PublishReturnMessage(returnData, "grp20/res/patients/update", client)
+    PublishReturnMessage(returnData, "grp20/res/patients/delete", client)
     return returnVal
 }
 
