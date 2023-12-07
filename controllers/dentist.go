@@ -17,28 +17,41 @@ import (
 func InitialiseDentist(client mqtt.Client) {
 
 	// 	CREATE
-    tokenCreate := client.Subscribe("grp20/req/dentist/create", byte(0), func(c mqtt.Client, m mqtt.Message){
+    tokenCreate := client.Subscribe("grp20/req/dentists/create", byte(0), func(c mqtt.Client, m mqtt.Message){
 
 		var payload schemas.Dentist
-        err := json.Unmarshal(m.Payload(), &payload)
-        if err != nil {
-            panic(err)
+		var returnData Res
+        err1 := json.Unmarshal(m.Payload(), &payload)
+        if err1 != nil {
+            panic(err1)
         }
-        go CreateDentist(payload.Username, payload.Password, client)
+        err2 := json.Unmarshal(m.Payload(), &returnData)
+        if err2 != nil {
+            panic(err2)
+        }
+        go CreateDentist(payload, returnData, client)
     })
     if tokenCreate.Error() != nil {
         panic(tokenCreate.Error())
     }
 
 	// READ
-    tokenRead := client.Subscribe("grp20/req/dentist/read", byte(0), func(c mqtt.Client, m mqtt.Message){
+    tokenRead := client.Subscribe("grp20/req/dentists/read", byte(0), func(c mqtt.Client, m mqtt.Message){
         
         var payload schemas.Dentist
-        err := json.Unmarshal(m.Payload(), &payload)
-        if err != nil {
-            panic(err)
+        var returnData Res
+
+        err1 := json.Unmarshal(m.Payload(), &payload)
+        if err1 != nil {
+            panic(err1)
         }
-        go GetDentist(payload.Username, client)
+
+        err2 := json.Unmarshal(m.Payload(), &returnData)
+        if err2 != nil {
+            panic(err2)
+        }
+
+        go GetDentist(payload.Username, returnData, client)
     })
 
     if tokenRead.Error() != nil {
@@ -46,18 +59,25 @@ func InitialiseDentist(client mqtt.Client) {
     }
 
 	// UPDATE
-    tokenUpdate := client.Subscribe("grp20/req/dentist/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenUpdate := client.Subscribe("grp20/req/dentists/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 
 		var payload UpdateRequest
+        var returnData Res
 
 
-		err := json.Unmarshal(m.Payload(), &payload)
-		if err != nil {
-			panic(err)
+		err1 := json.Unmarshal(m.Payload(), &payload)
+		if err1 != nil {
+			panic(err1)
 		}
 
-		go UpdateDentist(payload, client)
+        err2 := json.Unmarshal(m.Payload(), &returnData)
+		if err2 != nil {
+			panic(err2)
+		}
+
+
+		go UpdateDentist(payload, returnData, client)
 
 
 	})
@@ -67,15 +87,22 @@ func InitialiseDentist(client mqtt.Client) {
     }   
 
 	//DELETE
-    tokenRemove := client.Subscribe("grp20/req/dentist/delete", byte(0), func(c mqtt.Client, m mqtt.Message) {
+    tokenRemove := client.Subscribe("grp20/req/dentists/delete", byte(0), func(c mqtt.Client, m mqtt.Message) {
         
         var payload schemas.Dentist
-        err := json.Unmarshal(m.Payload(), &payload)
-        if err != nil {
-            panic(err)
+        var resData Res
+
+        err1 := json.Unmarshal(m.Payload(), &payload)
+        if err1 != nil {
+            panic(err1)
         }
 
-        go DeleteDentist(payload.Username, client)
+        err2 := json.Unmarshal(m.Payload(), &resData)
+        if err2 != nil {
+            panic(err2)
+        }
+
+        go DeleteDentist(payload.Username, resData, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -85,41 +112,43 @@ func InitialiseDentist(client mqtt.Client) {
 }
 
 // CREATE
-func CreateDentist(username string, password string, client mqtt.Client) bool {
+func CreateDentist(dentist schemas.Dentist, returnData Res, client mqtt.Client) bool {
 
-    var message string
     var returnVal bool
 
-    if userExists(username) {
-        message = "{\"Message\": \"User already exists\",\"Code\": \"409\"}"
+    if userExists(dentist.Username) {
+        returnData.Message = "User already exists"
+        returnData.Status = 409
         returnVal = false
     }   else{
 
         col := getDentistCollection()
-        hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-        doc := schemas.Dentist{Username: username, Password: string(hashed)}
+        hashed, err := bcrypt.GenerateFromPassword([]byte(dentist.Password), 12)
+        doc := schemas.Dentist{Username: dentist.Username, Password: string(hashed)}
+
+        dentist.Password = ""
         
         result, err := col.InsertOne(context.TODO(), doc)
         if err != nil {
             log.Fatal(err)
         }
 
-        message = "{\"Message\": \"User created\",\"Code\": \"201\"}"
+        returnData.Message = "User created"
+        returnData.Status = 201
+        returnData.Dentist = &dentist
 
         fmt.Printf("Registered Dentist ID: %v \n", result.InsertedID)
 
         returnVal = true
     }
 
-    client.Publish("grp20/res/dentist/create", 0, false, message)
+    PublishReturnMessage(returnData, "grp20/res/dentist/create", client)
     return returnVal
 
 }
 
 // READ
-func GetDentist(username string, client mqtt.Client) bool {
-    var message string
-    var code string
+func GetDentist(username string, returnData Res, client mqtt.Client) bool {
     var returnVal bool
 
     col := getDentistCollection()
@@ -128,35 +157,30 @@ func GetDentist(username string, client mqtt.Client) bool {
     data := col.FindOne(context.TODO(), filter)
     data.Decode(user)
 
-    jsonData, err := json.Marshal(user) 
-    if err != nil{
-        log.Fatal(err)
-    }
-
     if user.Username == ""{
-        code = "404"
+        returnData.Message = "Dentist not found"
+        returnData.Status = 404
         returnVal = false
     } else {
-        code = "200"
         returnVal = true
+        returnData.Status = 200
+        user.Password = ""
+        returnData.Dentist = user
     }
-    message = AddCodeStringJson(string(jsonData), code)
 
-    client.Publish("grp20/res/dentist/read", 0, false, message)
+    PublishReturnMessage(returnData, "grp20/res/dentist/read", client)
 
     return returnVal
 }
 
 // UPDATE
-func UpdateDentist(payload UpdateRequest, client mqtt.Client) bool {
-    var message string
-    var code string
+func UpdateDentist(payload UpdateRequest, returnData Res, client mqtt.Client) bool {
     var update bson.M
     var returnVal bool
     
     if userExists(payload.Username) {
-        message = "{\"Message\": \"Username taken\"}"
-        code = "409"
+        returnData.Message = "Username taken"
+        returnData.Status = 409
         returnVal = false
     } else{
         
@@ -180,32 +204,35 @@ func UpdateDentist(payload UpdateRequest, client mqtt.Client) bool {
         if err != nil {
             log.Fatal(err)
             fmt.Printf("Updated failed for Dentist with Username: %v \n", payload.OldName)
-            code = "500"
-            message = "\"message\": \"Update failed\""
+
+            returnData.Status = 500
+			returnData.Message = "Update failed"
+
             returnVal = false
         } else if result.MatchedCount == 1{
             fmt.Printf("Updated Dentist with Username: %v \n", payload.OldName)
-            code = "200"
-            message = "\"message\": \"Dentist updated\""
+
+            returnData.Status = 200
+			returnData.Message = "Dentist updated"
+
             returnVal = true
         } else {
             fmt.Printf("No user with that name")
-            code = "404"
-            message = "\"message\": \"User not found\""
+
+            returnData.Status = 404
+			returnData.Message = "User not found"
+
             returnVal = false
         }
 
     }
-        message = AddCodeStringJson(message, code)
-        client.Publish("grp20/res/dentist/update", 0, false, message)
+        PublishReturnMessage(returnData, "grp20/res/dentist/update", client)
         return returnVal
 
 }
 
 // DELETE
-func DeleteDentist(username string, client mqtt.Client) bool {
-    var message string
-    var code string
+func DeleteDentist(username string, returnData Res, client mqtt.Client) bool {
     var returnVal bool
     
     col := getDentistCollection()
@@ -218,18 +245,21 @@ func DeleteDentist(username string, client mqtt.Client) bool {
     }
 
     if result.DeletedCount == 1 {
-        message = "{\"Message\": \""+ username +" deleted\"}"
-        code = "200"
+
+        returnData.Status = 200
+		returnData.Message = "User with id: " + username + " deleted"
+
         returnVal = true
 	    fmt.Printf("Deleted Dentist %v \n", username)
     } else{
-        message = "{\"Message\": \"Error deleting user\"}" 
-        code = "404"
+
+        returnData.Status = 404
+		returnData.Message = "User not found"
+
         returnVal = false
     }
 
-    message = AddCodeStringJson(message, code)
-    client.Publish("grp20/res/dentist/delete", 0, false, message)
+	PublishReturnMessage(returnData, "grp20/res/dentists/delete", client)
     return returnVal
 }
 
