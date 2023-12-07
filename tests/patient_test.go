@@ -28,44 +28,42 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-
 func TestPatientCRUD(t *testing.T) {
 
-    var res controllers.Res
+	var res controllers.Res
 
-    payload := schemas.Patient{
-        ID: primitive.NewObjectID(),
-        Username: "mike",
-        Password: "password",
-    }
+	payload := schemas.Patient{
+		ID:       primitive.NewObjectID(),
+		Username: "mike",
+		Password: "password",
+	}
 
-    id := payload.ID
+	id := payload.ID
 
 	result := controllers.CreatePatient(payload, res, client)
 	if !result {
 		t.Error("Patient Creation Failed")
 	}
 
-    result = controllers.GetPatient(id, res, client)
-    if !result {
-        t.Error("Reading patient failed")
-    }
+	result = controllers.GetPatient(id, res, client)
+	if !result {
+		t.Error("Reading patient failed")
+	}
 
-    updateUser := controllers.UpdateRequest{
-        ID: payload.ID,
-        OldName: "mike",
-        Username: "ben",
-        Password: "123",
-    }
+	updateUser := controllers.UpdateRequest{
+		ID:       payload.ID,
+		OldName:  "mike",
+		Username: "ben",
+		Password: "123",
+	}
 
-    result = controllers.UpdatePatient(updateUser, res, client)
-    if !result {
-        t.Error("Updating patient failed")
-    }
+	result = controllers.UpdatePatient(updateUser, res, client)
+	if !result {
+		t.Error("Updating patient failed")
+	}
 
 	result = controllers.DeletePatient(updateUser.ID, res, client)
 	if !result {
 		t.Error("Patient Deletion Failed")
 	}
 }
-
