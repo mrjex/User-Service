@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -148,12 +150,12 @@ func CreateDentist(dentist schemas.Dentist, returnData Res, client mqtt.Client) 
 }
 
 // READ
-func GetDentist(username string, returnData Res, client mqtt.Client) bool {
+func GetDentist(id primitive.ObjectID, returnData Res, client mqtt.Client) bool {
     var returnVal bool
 
     col := getDentistCollection()
     user := &schemas.Dentist{}
-    filter := bson.M{"username": username}
+    filter := bson.M{"_id": id}
     data := col.FindOne(context.TODO(), filter)
     data.Decode(user)
 
@@ -168,7 +170,7 @@ func GetDentist(username string, returnData Res, client mqtt.Client) bool {
         returnData.Dentist = user
     }
 
-    PublishReturnMessage(returnData, "grp20/res/dentist/read", client)
+    PublishReturnMessage(returnData, "grp20/res/dentists/read", client)
 
     return returnVal
 }
@@ -196,7 +198,7 @@ func UpdateDentist(payload UpdateRequest, returnData Res, client mqtt.Client) bo
             update = bson.M{"$set": bson.M{"password": string(hashed)}}
         }
 
-        filter := bson.M{"username": payload.OldName}
+        filter := bson.M{"_id": payload.ID}
 
 
         result, err := col.UpdateOne(context.TODO(), filter, update)
@@ -232,11 +234,11 @@ func UpdateDentist(payload UpdateRequest, returnData Res, client mqtt.Client) bo
 }
 
 // DELETE
-func DeleteDentist(username string, returnData Res, client mqtt.Client) bool {
+func DeleteDentist(id primitive.ObjectID, returnData Res, client mqtt.Client) bool {
     var returnVal bool
     
     col := getDentistCollection()
-    filter := bson.M{"username": username}
+    filter := bson.M{"_id": id}
     result, err := col.DeleteOne(context.TODO(), filter)
 
 
@@ -247,10 +249,10 @@ func DeleteDentist(username string, returnData Res, client mqtt.Client) bool {
     if result.DeletedCount == 1 {
 
         returnData.Status = 200
-		returnData.Message = "User with id: " + username + " deleted"
+		returnData.Message = "User with id: " + id.Hex() + " deleted"
 
         returnVal = true
-	    fmt.Printf("Deleted Dentist %v \n", username)
+	    fmt.Printf("Deleted Dentist %v \n", id.Hex())
     } else{
 
         returnData.Status = 404
