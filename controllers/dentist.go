@@ -1,6 +1,5 @@
 package controllers
-
-import (
+import(
 	"Group20/Dentanoid/database"
 	"Group20/Dentanoid/schemas"
 	"context"
@@ -23,14 +22,16 @@ func InitialiseDentist(client mqtt.Client) {
 
 		var payload schemas.Dentist
 		var returnData Res
+
         err1 := json.Unmarshal(m.Payload(), &payload)
-        if err1 != nil {
-            panic(err1)
-        }
         err2 := json.Unmarshal(m.Payload(), &returnData)
-        if err2 != nil {
-            panic(err2)
-        }
+
+		if (err1 != nil) && (err2 != nil) {
+            returnData.Message = "Bad request"
+            returnData.Status = 400
+            PublishReturnMessage(returnData, "grp20/res/dentists/create", client)
+		}
+
         go CreateDentist(payload, returnData, client)
     })
     if tokenCreate.Error() != nil {
@@ -44,14 +45,13 @@ func InitialiseDentist(client mqtt.Client) {
         var returnData Res
 
         err1 := json.Unmarshal(m.Payload(), &payload)
-        if err1 != nil {
-            panic(err1)
-        }
-
         err2 := json.Unmarshal(m.Payload(), &returnData)
-        if err2 != nil {
-            panic(err2)
-        }
+
+		if (err1 != nil) && (err2 != nil) {
+            returnData.Message = "Bad request"
+            returnData.Status = 400
+            PublishReturnMessage(returnData, "grp20/res/dentists/read", client)
+		}
 
         go GetDentist(payload.ID, returnData, client)
     })
@@ -63,19 +63,16 @@ func InitialiseDentist(client mqtt.Client) {
 	// UPDATE
     tokenUpdate := client.Subscribe("grp20/req/dentists/update", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
-
 		var payload UpdateRequest
         var returnData Res
 
-
 		err1 := json.Unmarshal(m.Payload(), &payload)
-		if err1 != nil {
-			panic(err1)
-		}
-
         err2 := json.Unmarshal(m.Payload(), &returnData)
-		if err2 != nil {
-			panic(err2)
+
+		if (err1 != nil) && (err2 != nil) {
+            returnData.Message = "Bad request"
+            returnData.Status = 400
+            PublishReturnMessage(returnData, "grp20/res/dentists/update", client)
 		}
 
 
@@ -92,19 +89,18 @@ func InitialiseDentist(client mqtt.Client) {
     tokenRemove := client.Subscribe("grp20/req/dentists/delete", byte(0), func(c mqtt.Client, m mqtt.Message) {
         
         var payload schemas.Dentist
-        var resData Res
+        var returnData Res
 
         err1 := json.Unmarshal(m.Payload(), &payload)
-        if err1 != nil {
-            panic(err1)
-        }
+        err2 := json.Unmarshal(m.Payload(), &returnData)
 
-        err2 := json.Unmarshal(m.Payload(), &resData)
-        if err2 != nil {
-            panic(err2)
-        }
+		if (err1 != nil) && (err2 != nil) {
+            returnData.Message = "Bad request"
+            returnData.Status = 400
+            PublishReturnMessage(returnData, "grp20/res/dentists/delete", client)
+		}
 
-        go DeleteDentist(payload.ID, resData, client)
+        go DeleteDentist(payload.ID, returnData, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -117,6 +113,15 @@ func InitialiseDentist(client mqtt.Client) {
 func CreateDentist(dentist schemas.Dentist, returnData Res, client mqtt.Client) bool {
 
     var returnVal bool
+
+
+    //Checks for malformed request
+    if ((dentist.Username == "") || (dentist.Password == "")){
+        returnData.Message = "Bad request"
+        returnData.Status = 400
+        PublishReturnMessage(returnData, "grp20/res/dentists/create", client)
+        return false
+    }
 
     if userExists(dentist.Username) {
         returnData.Message = "User already exists"
@@ -145,7 +150,7 @@ func CreateDentist(dentist schemas.Dentist, returnData Res, client mqtt.Client) 
         returnVal = true
     }
 
-    PublishReturnMessage(returnData, "grp20/res/dentist/create", client)
+    PublishReturnMessage(returnData, "grp20/res/dentists/create", client)
     return returnVal
 
 }
@@ -229,7 +234,7 @@ func UpdateDentist(payload UpdateRequest, returnData Res, client mqtt.Client) bo
         }
 
     }
-        PublishReturnMessage(returnData, "grp20/res/dentist/update", client)
+        PublishReturnMessage(returnData, "grp20/res/dentists/update", client)
         return returnVal
 
 }
