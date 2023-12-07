@@ -21,7 +21,7 @@ func TestCreate(t *testing.T) {
 	if !result {
 		t.Error("Dentist Creation Failed")
 	}
-	result = controllers.DeleteDentist(dentist.Username, returnData, client)
+	result = controllers.DeleteDentist(dentist.ID, returnData, client)
 	if !result {
 		t.Error("Dentist Deletion Failed")
 	}
