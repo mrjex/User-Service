@@ -159,6 +159,7 @@ func GetPatient(id primitive.ObjectID, returnData Res, client mqtt.Client) bool 
 	data.Decode(user)
 
 	if user.Username == "" {
+        returnData.Message = "Patient not found"
 		returnData.Status = 404
 		returnVal = false
 	} else {
@@ -252,7 +253,7 @@ func DeletePatient(id primitive.ObjectID, returnData Res, client mqtt.Client) bo
 	} else {
 
 		returnData.Status = 404
-		returnData.Message = "Error deleting user"
+		returnData.Message = "User not found"
 
 		returnVal = false
 	}
