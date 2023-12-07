@@ -17,6 +17,26 @@ import(
 
 func InitialiseDentist(client mqtt.Client) {
 
+    tokenLogin := client.Subscribe("grp20/req/dentists/login", byte(0), func(c mqtt.Client, m mqtt.Message){
+
+		var payload schemas.Dentist
+		var returnData Res
+
+        err1 := json.Unmarshal(m.Payload(), &payload)
+        err2 := json.Unmarshal(m.Payload(), &returnData)
+
+		if (err1 != nil) && (err2 != nil) {
+            returnData.Message = "Bad request"
+            returnData.Status = 400
+            PublishReturnMessage(returnData, "grp20/res/dentists/login", client)
+		}   
+
+        go loginDentist(payload.Username, payload.Password, returnData, client)
+    })
+    if tokenLogin.Error() != nil {
+        panic(tokenLogin.Error())
+    }
+
 	// 	CREATE
     tokenCreate := client.Subscribe("grp20/req/dentists/create", byte(0), func(c mqtt.Client, m mqtt.Message){
 
