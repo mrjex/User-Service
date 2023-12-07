@@ -53,7 +53,7 @@ func InitialiseDentist(client mqtt.Client) {
             panic(err2)
         }
 
-        go GetDentist(payload.Username, returnData, client)
+        go GetDentist(payload.ID, returnData, client)
     })
 
     if tokenRead.Error() != nil {
@@ -104,7 +104,7 @@ func InitialiseDentist(client mqtt.Client) {
             panic(err2)
         }
 
-        go DeleteDentist(payload.Username, resData, client)
+        go DeleteDentist(payload.ID, resData, client)
     })
 
     if tokenRemove.Error() != nil{
@@ -126,15 +126,16 @@ func CreateDentist(dentist schemas.Dentist, returnData Res, client mqtt.Client) 
 
         col := getDentistCollection()
         hashed, err := bcrypt.GenerateFromPassword([]byte(dentist.Password), 12)
-        doc := schemas.Dentist{Username: dentist.Username, Password: string(hashed)}
+        dentist.Password = string(hashed)
 
-        dentist.Password = ""
-        
-        result, err := col.InsertOne(context.TODO(), doc)
+        result, err := col.InsertOne(context.TODO(), dentist)
         if err != nil {
             log.Fatal(err)
         }
 
+
+        dentist.Password = ""
+        dentist.ID = result.InsertedID.(primitive.ObjectID)
         returnData.Message = "User created"
         returnData.Status = 201
         returnData.Dentist = &dentist

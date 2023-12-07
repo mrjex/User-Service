@@ -126,15 +126,13 @@ func CreatePatient(patient schemas.Patient, returnData Res, client mqtt.Client) 
 		hashed, err := bcrypt.GenerateFromPassword([]byte(patient.Password), 12)
 		patient.Password = string(hashed)
 
-		patient.Password = ""
 
 		result, err := col.InsertOne(context.TODO(), patient)
 		if err != nil {
 			log.Fatal(err)
 		}
+		patient.Password = ""
 		patient.ID = result.InsertedID.(primitive.ObjectID)
-		fmt.Printf(patient.Username)
-		fmt.Printf(patient.Password)
 		returnData.Message = "User created"
 		returnData.Status = 201
 		returnData.Patient = &patient
