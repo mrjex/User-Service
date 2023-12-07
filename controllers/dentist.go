@@ -30,7 +30,7 @@ func InitialiseDentist(client mqtt.Client) {
             returnData.Message = "Bad request"
             returnData.Status = 400
             PublishReturnMessage(returnData, "grp20/res/dentists/create", client)
-		}
+		}   
 
         go CreateDentist(payload, returnData, client)
     })
@@ -73,10 +73,12 @@ func InitialiseDentist(client mqtt.Client) {
             returnData.Message = "Bad request"
             returnData.Status = 400
             PublishReturnMessage(returnData, "grp20/res/dentists/update", client)
-		}
+		}  
+
+    	go UpdateDentist(payload, returnData, client)
+        
 
 
-		go UpdateDentist(payload, returnData, client)
 
 
 	})
@@ -211,21 +213,21 @@ func UpdateDentist(payload UpdateRequest, returnData Res, client mqtt.Client) bo
 
         if err != nil {
             log.Fatal(err)
-            fmt.Printf("Updated failed for Dentist with Username: %v \n", payload.OldName)
+            fmt.Printf("Updated failed for Dentist with ID: %v \n", payload.ID)
 
             returnData.Status = 500
 			returnData.Message = "Update failed"
 
             returnVal = false
         } else if result.MatchedCount == 1{
-            fmt.Printf("Updated Dentist with Username: %v \n", payload.OldName)
+            fmt.Printf("Updated Dentist with ID: %v \n", payload.ID)
 
             returnData.Status = 200
 			returnData.Message = "Dentist updated"
 
             returnVal = true
         } else {
-            fmt.Printf("No user with that name")
+            fmt.Printf("No dentist with that ID")
 
             returnData.Status = 404
 			returnData.Message = "User not found"
