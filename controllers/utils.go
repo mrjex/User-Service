@@ -11,9 +11,9 @@ Extracts the topic from an mqtt message and returns the last token of its topic
 e.g: '/users/mike' -> 'mike'
 */
 type UpdateRequest struct {
-    OldName string   
-    Username string
-    Password string
+	OldName  string
+	Username string
+	Password string
 }
 
 func GetPath(message mqtt.Message) string {
@@ -22,18 +22,18 @@ func GetPath(message mqtt.Message) string {
 	return result
 }
 
-//Adds mqtt code to stringified json
-func AddCodeStringJson (json string, code string) string {
-    var newJson string
-    length := len(json)
-    index := 0
+// Adds mqtt code to stringified json
+func AddCodeStringJson(json string, code string) string {
+	var newJson string
+	length := len(json)
+	index := 0
 
-    runes := []rune(json)
+	runes := []rune(json)
 
-    for index >= 0 && index < (length - 1) {
-        newJson = newJson + string(runes[index])
-        index++
-    }
-    newJson = newJson + ",\"Code\": \"" + code + "\"}"
-    return newJson
+	for index >= 0 && index < (length-1) {
+		newJson = newJson + string(runes[index])
+		index++
+	}
+	newJson = newJson + ",\"Code\": \"" + code + "\"}"
+	return newJson
 }
