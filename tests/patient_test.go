@@ -4,11 +4,13 @@ import (
 	"Group20/Dentanoid/controllers"
 	"Group20/Dentanoid/database"
 	"Group20/Dentanoid/mqtt"
+	"Group20/Dentanoid/schemas"
 	"log"
 	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -27,30 +29,40 @@ func TestMain(m *testing.M) {
 }
 
 func TestPatientCRUD(t *testing.T) {
-	controllers.DeletePatient("mike", client)
-	controllers.DeletePatient("ben", client)
-	result := controllers.CreatePatient("mike", "password", client)
+
+	var res controllers.Res
+
+	payload := schemas.Patient{
+		ID:       primitive.NewObjectID(),
+		Username: "mike",
+		Password: "password",
+	}
+
+	id := payload.ID
+
+	result := controllers.CreatePatient(payload, res, client)
 	if !result {
 		t.Error("Patient Creation Failed")
 	}
 
-	result = controllers.GetPatient("mike", client)
+	result = controllers.GetPatient(id, res, client)
 	if !result {
 		t.Error("Reading patient failed")
 	}
 
 	updateUser := controllers.UpdateRequest{
+		ID:       payload.ID,
 		OldName:  "mike",
 		Username: "ben",
 		Password: "123",
 	}
 
-	result = controllers.UpdatePatient(updateUser, client)
+	result = controllers.UpdatePatient(updateUser, res, client)
 	if !result {
 		t.Error("Updating patient failed")
 	}
 
-	result = controllers.DeletePatient("ben", client)
+	result = controllers.DeletePatient(updateUser.ID, res, client)
 	if !result {
 		t.Error("Patient Deletion Failed")
 	}
