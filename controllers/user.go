@@ -66,6 +66,9 @@ func loginPatient(username string, password string, returnData Res, client mqtt.
         if err == nil {
             returnData.Status = 200
             returnData.Message = "Authorised"
+            patient.Password = ""
+            returnData.Patient = patient
+
         } else{
             returnData.Status = 401
             returnData.Message = "Wrong password"
@@ -89,6 +92,8 @@ func loginDentist(username string, password string, returnData Res, client mqtt.
         if err == nil {
             returnData.Status = 200
             returnData.Message = "Authorised"
+            dentist.Password = ""
+            returnData.Dentist = dentist
         } else{
             returnData.Status = 401
             returnData.Message = "Wrong password"
