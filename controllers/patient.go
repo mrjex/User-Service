@@ -212,7 +212,7 @@ func UpdatePatient(payload UpdateRequest, returnData Res, client mqtt.Client) bo
 	} else {
 
 		col := getPatientCollection()
-		//Hash password, might introduce performance issues when done before checking if olduser exists
+		//Hash password, might introduce performance issues when done before checking if user already exists
 		hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 12)
 
 		if (payload.Username != "") && (payload.Password != "") {
