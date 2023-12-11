@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 
-	//"encoding/json"
 	"fmt"
 	"log"
 
@@ -19,25 +18,25 @@ import (
 
 func InitialisePatient(client mqtt.Client) {
 
-    tokenLogin := client.Subscribe("grp20/req/patients/login", byte(0), func(c mqtt.Client, m mqtt.Message){
+	tokenLogin := client.Subscribe("grp20/req/patients/login", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		var payload schemas.Dentist
 		var returnData Res
 
-        err1 := json.Unmarshal(m.Payload(), &payload)
-        err2 := json.Unmarshal(m.Payload(), &returnData)
+		err1 := json.Unmarshal(m.Payload(), &payload)
+		err2 := json.Unmarshal(m.Payload(), &returnData)
 
 		if (err1 != nil) && (err2 != nil) {
-            returnData.Message = "Bad request"
-            returnData.Status = 400
-            PublishReturnMessage(returnData, "grp20/res/patients/login", client)
-		}   
-
-        go loginPatient(payload.Username, payload.Password, returnData, client)
-    })
-    if tokenLogin.Error() != nil {
-        panic(tokenLogin.Error())
-    }
+			returnData.Message = "Bad request"
+			returnData.Status = 400
+			PublishReturnMessage(returnData, "grp20/res/patients/login", client)
+		} else {
+			go loginPatient(payload.Username, payload.Password, returnData, client)
+		}
+	})
+	if tokenLogin.Error() != nil {
+		panic(tokenLogin.Error())
+	}
 
 	//CREATE
 	tokenCreate := client.Subscribe("grp20/req/patients/create", byte(0), func(c mqtt.Client, m mqtt.Message) {
@@ -49,12 +48,13 @@ func InitialisePatient(client mqtt.Client) {
 		err2 := json.Unmarshal(m.Payload(), &returnData)
 
 		if (err1 != nil) && (err2 != nil) {
-            returnData.Message = "Bad request"
-            returnData.Status = 400
-            PublishReturnMessage(returnData, "grp20/res/patients/create", client)
+			returnData.Message = "Bad request"
+			returnData.Status = 400
+			PublishReturnMessage(returnData, "grp20/res/patients/create", client)
+		} else {
+			go CreatePatient(payload, returnData, client)
 		}
 
-		go CreatePatient(payload, returnData, client)
 	})
 	if tokenCreate.Error() != nil {
 		panic(tokenCreate.Error())
@@ -70,12 +70,12 @@ func InitialisePatient(client mqtt.Client) {
 		err2 := json.Unmarshal(m.Payload(), &returnData)
 
 		if (err1 != nil) && (err2 != nil) {
-            returnData.Message = "Bad request"
-            returnData.Status = 400
-            PublishReturnMessage(returnData, "grp20/res/patients/get", client)
+			returnData.Message = "Bad request"
+			returnData.Status = 400
+			PublishReturnMessage(returnData, "grp20/res/patients/get", client)
+		} else {
+			go GetPatient(payload.ID, returnData, client)
 		}
-
-		go GetPatient(payload.ID, returnData, client)
 	})
 
 	if tokenRead.Error() != nil {
@@ -94,13 +94,12 @@ func InitialisePatient(client mqtt.Client) {
 		err2 := json.Unmarshal(m.Payload(), &returnData)
 
 		if (err1 != nil) && (err2 != nil) {
-            returnData.Message = "Bad request"
-            returnData.Status = 400
-            PublishReturnMessage(returnData, "grp20/res/patients/update", client)
+			returnData.Message = "Bad request"
+			returnData.Status = 400
+			PublishReturnMessage(returnData, "grp20/res/patients/update", client)
+		} else {
+			go UpdatePatient(payload, returnData, client)
 		}
-
-		go UpdatePatient(payload, returnData, client)
-
 	})
 
 	if tokenUpdate.Error() != nil {
@@ -120,12 +119,12 @@ func InitialisePatient(client mqtt.Client) {
 		err2 := json.Unmarshal(m.Payload(), &returnData)
 
 		if (err1 != nil) && (err2 != nil) {
-            returnData.Message = "Bad request"
-            returnData.Status = 400
-            PublishReturnMessage(returnData, "grp20/res/patients/delete", client)
+			returnData.Message = "Bad request"
+			returnData.Status = 400
+			PublishReturnMessage(returnData, "grp20/res/patients/delete", client)
+		} else {
+			go DeletePatient(payload.ID, returnData, client)
 		}
-
-		go DeletePatient(payload.ID, returnData, client)
 	})
 
 	if tokenRemove.Error() != nil {
@@ -138,13 +137,13 @@ func InitialisePatient(client mqtt.Client) {
 func CreatePatient(patient schemas.Patient, returnData Res, client mqtt.Client) bool {
 	var returnVal bool
 
-    //Checks for malformed request
-    if ((patient.Username == "") || (patient.Password == "")){
-        returnData.Message = "Bad request"
-        returnData.Status = 400
-        PublishReturnMessage(returnData, "grp20/res/patients/create", client)
-        return false
-    }
+	//Checks for malformed request
+	if (patient.Username == "") || (patient.Password == "") {
+		returnData.Message = "Bad request"
+		returnData.Status = 400
+		PublishReturnMessage(returnData, "grp20/res/patients/create", client)
+		return false
+	}
 
 	if userExists(patient.Username) {
 		returnData.Message = "User already exists"
@@ -155,7 +154,6 @@ func CreatePatient(patient schemas.Patient, returnData Res, client mqtt.Client) 
 		col := getPatientCollection()
 		hashed, err := bcrypt.GenerateFromPassword([]byte(patient.Password), 12)
 		patient.Password = string(hashed)
-
 
 		result, err := col.InsertOne(context.TODO(), patient)
 		if err != nil {
@@ -187,7 +185,7 @@ func GetPatient(id primitive.ObjectID, returnData Res, client mqtt.Client) bool 
 	data.Decode(user)
 
 	if user.Username == "" {
-        returnData.Message = "Patient not found"
+		returnData.Message = "Patient not found"
 		returnData.Status = 404
 		returnVal = false
 	} else {
