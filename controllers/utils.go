@@ -54,13 +54,18 @@ func AddCodeStringJson(json string, code string) string {
 func PublishReturnMessage(returnData Res, topic string, client mqtt.Client) {
 
 	returnJson, err := json.Marshal(returnData)
+	var returnString string
+
 	if err != nil {
-		panic(err)
+		returnString = `{
+			"message": "Malformation error",
+			"code": "500"
+		}`
+	} else {
+		returnString = string(returnJson)
 	}
 
-	returnString := string(returnJson)
 	fmt.Printf(returnString)
 
 	client.Publish(topic, 0, false, returnString)
-
 }

@@ -59,9 +59,10 @@ In this service the following people have contributed:
 ### Developers
 - Mohamad Khalil
 - Lucas Holter
+- Cornelia Olofsson Larsson 
+
 ### Code Reviewers
 
-- Cornelia Olofsson Larsson 
 - James Klouda 
 - Jonatan Boman 
 - Joel Mattson
