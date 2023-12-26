@@ -8,20 +8,41 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func TestCreate(t *testing.T) {
-    dentist := schemas.Dentist{
-        Username: "mike",
-        Password: "password",
-        ID: primitive.NewObjectID(),
-    }
+func TestDentistCRUD(t *testing.T) {
 
-    var returnData controllers.Res
+	var res controllers.Res
 
-	result := controllers.CreateDentist(dentist, returnData, client)
+	payload := schemas.Dentist{
+		ID:       primitive.NewObjectID(),
+		Username: "mike",
+		Password: "password",
+	}
+
+	id := payload.ID
+
+	result := controllers.CreateDentist(payload, res, client)
 	if !result {
 		t.Error("Dentist Creation Failed")
 	}
-	result = controllers.DeleteDentist(dentist.ID, returnData, client)
+
+	result = controllers.GetDentist(id, res, client)
+	if !result {
+		t.Error("Reading patient failed")
+	}
+
+	updateUser := controllers.UpdateRequest{
+		ID:       payload.ID,
+		OldName:  "mike",
+		Username: "ben",
+		Password: "123",
+	}
+
+	result = controllers.UpdateDentist(updateUser, res, client)
+	if !result {
+		t.Error("Updating patient failed")
+	}
+
+	result = controllers.DeleteDentist(updateUser.ID, res, client)
 	if !result {
 		t.Error("Dentist Deletion Failed")
 	}
