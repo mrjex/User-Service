@@ -19,3 +19,12 @@ func Connect() {
 	}
 	fmt.Println("App is connected to MongoDB")
 }
+
+func Close() {
+    if Database != nil{ 
+        Database.Client().Disconnect(context.TODO()) 
+        Database = nil
+        fmt.Println("Database connection closed") 
+    }
+}
+

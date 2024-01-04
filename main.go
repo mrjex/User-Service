@@ -27,6 +27,9 @@ func main() {
 	// Connect to MQTT
 	mqtt.GetInstance()
 
+    defer database.Close()
+    defer mqtt.Close()
+
 
 	<-c
 	// Variant #1 MQTT
