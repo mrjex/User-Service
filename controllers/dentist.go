@@ -60,7 +60,7 @@ func InitialiseDentist(client mqtt.Client) {
 	}
 
 	// READ
-	tokenRead := client.Subscribe("grp20/req/dentists/read", byte(0), func(c mqtt.Client, m mqtt.Message) {
+	tokenRead := client.Subscribe("grp20/req/dentists/get", byte(0), func(c mqtt.Client, m mqtt.Message) {
 
 		var payload schemas.Dentist
 		var returnData Res
@@ -71,7 +71,7 @@ func InitialiseDentist(client mqtt.Client) {
 		if (err1 != nil) && (err2 != nil) {
 			returnData.Message = "Bad request"
 			returnData.Status = 400
-			PublishReturnMessage(returnData, "grp20/res/dentists/read", client)
+			PublishReturnMessage(returnData, "grp20/res/dentists/get", client)
 		} else {
 			go GetDentist(payload.ID, returnData, client)
 		}
@@ -192,7 +192,7 @@ func GetDentist(id primitive.ObjectID, returnData Res, client mqtt.Client) bool 
 		returnData.Dentist = user
 	}
 
-	PublishReturnMessage(returnData, "grp20/res/dentists/read", client)
+	PublishReturnMessage(returnData, "grp20/res/dentists/get", client)
 
 	return returnVal
 }
