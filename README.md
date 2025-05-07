@@ -1,5 +1,9 @@
 # User service
-Welcome to the User service! This service handles request for publishing, updating and deleing users. Users can be either a Patient or a Dentist. 
+
+> ⚠️ **Disclaimer**: This is a **fork** of [User Service](https://github.com/Dentanoid/User-Service), originally created and maintained by the [Dentanoid Organization](https://github.com/Dentanoid)
+
+Welcome to the User service! This service handles request for publishing, updating and deleing users. Users can be either a Patient or a Dentist.
+
 ## Getting started
 
 This service is written in Go. [Check this link for more information about GO.](https://go.dev/)
@@ -50,23 +54,21 @@ This service will not get updated in the future, due to project being considered
 
 
 ## Authors and acknowledgment
-This service is a part of DIT356 distributed systems course, and is created by Group 20. [Check here for more information about the entire project.](https://git.chalmers.se/courses/dit355/2023/student-teams/dit356-2023-20/group-20-distributed-systems/-/wikis/home)
+
+This service is a part of *DIT356 Distributed Systems* course. For more information about this service's integration in the entire system, navigate to [Project Overview](https://github.com/Dentanoid/Architecture)
 
 ***WIP DUE TO SERVICE STILL BEING DEVELOPED***
 
 In this service the following people have contributed:
 
-### Developers
+### Contributing Team
+
 - Mohamad Khalil
 - Lucas Holter
 - Cornelia Olofsson Larsson 
-
-### Code Reviewers
-
 - James Klouda 
 - Jonatan Boman 
 - Joel Mattson
-
 
 
 ## Project status
